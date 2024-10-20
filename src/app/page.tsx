@@ -1,15 +1,17 @@
-
-import HeroHeader from "~/components/landing/hero";
-import { Button } from "~/components/ui/button";
+import { Hero } from "~/components/landing/hero";
+import { Navbar } from "~/components/nav";
+import { getServerAuthSession } from "~/server/auth";
 import { HydrateClient } from "~/trpc/server";
 /*
  * T3 Gradient  bg-gradient-to-b from-[#2e026d] to-[#15162c]
  */
 export default async function Home() {
+    const user = await getServerAuthSession();
     return (
         <HydrateClient>
-            <main className="flex min-h-screen flex-col items-center justify-center">
-                <HeroHeader />
+            <Navbar />
+            <main className="flex flex-col items-center justify-center">
+                <Hero session={user} />
             </main>
         </HydrateClient>
     );
