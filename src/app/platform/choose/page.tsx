@@ -56,11 +56,15 @@ export default function ChooseFlowPage() {
                         icon={<PlusCircle className="w-12 h-12 mb-4" />}
                         title="Create a Room"
                         description="Start a new room and invite others to join you."
-                        onClick={() => router.push('/platform/create')}
+                        onClick={() => router.push(`/platform/create?id=${Math.random().toString(36).substring(7)}`)}
                     />
                 </div>
+                <div className="flex flex-col items-center justify-center mt-16">
+                    <div className="text-gray-400 text-sm mr-4">Not interested?</div>
+                    <Button variant='link' onClick={() => router.push('/platform/freeplay')}>Yeah, no thanks. I just want to skribbl on my own.</Button>
+                </div>
             </main>
-        </div>
+        </div >
     )
 }
 
