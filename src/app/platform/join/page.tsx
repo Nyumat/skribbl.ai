@@ -15,7 +15,6 @@ export default function JoinRoomPage() {
     const router = useRouter();
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        console.log('Joining room with code:', roomCode)
         router.push(`/platform/room?code=${roomCode}`)
     }
 
@@ -51,13 +50,13 @@ export default function JoinRoomPage() {
                             onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                             placeholder="Enter Room Code"
                             className="w-full px-4 py-6 bg-gray-800 rounded-lg text-2xl text-center focus:outline-none focus:ring-2 focus:ring-blue-600"
-                            maxLength={6}
                         />
                     </div>
                     <Button
                         type="submit"
                         className="w-full px-4 py-3 bg-blue-500 rounded-lg text-xl font-semibold hover:bg-blue-600 transition-colors flex items-center justify-center"
                         disabled={roomCode.length < 4}
+                        onClick={handleSubmit}
                     >
                         Join Room
                         <ArrowRight className="ml-2 w-5 h-5" />
