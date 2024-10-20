@@ -17,8 +17,8 @@ export const judgeRouter = createTRPCRouter({
       ],
     });
     if (completion && completion.choices[0])
-      return completion.choices[0].message;
-    return "Unable to retrieve message";
+      return { message: completion.choices[0].message };
+    return { error: "Unable to retrieve message" };
   }),
   getScore: protectedProcedure
     .input(
