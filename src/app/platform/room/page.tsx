@@ -71,6 +71,7 @@ export default function RoomPage({
   const [images, setImages] = useState<GameImages[]>([]);
   const [prompt, setPrompt] = useState<string>();
   const utils = api.useUtils();
+  const getScore = api.judge.getScore.useMutation();
 
   const fetchPrompt = async () => {
     if (userId) {
@@ -179,6 +180,8 @@ export default function RoomPage({
   };
 
   const exportShapesForAllUsers = async () => {
+    const imageScores = [];
+
     for (const [userId, shapeIds] of Object.entries(userShapes)) {
       const svg = await editorRef.current.getSvg(shapeIds);
       if (svg) {
@@ -188,7 +191,8 @@ export default function RoomPage({
         });
         const url = URL.createObjectURL(blob);
         const img = new Image();
-        img.onload = () => {
+
+        img.onload = async () => {
           const canvas = document.createElement("canvas");
           canvas.width = img.width;
           canvas.height = img.height;
@@ -200,10 +204,42 @@ export default function RoomPage({
           link.download = `user_${userId}_shapes.png`;
           link.click();
           URL.revokeObjectURL(url);
+
+          // Convert to base64
+          const base64Image = canvas.toDataURL("image/png").split(",")[1]; // Remove data URL prefix
+
+          // Use the trpc function to get the score
+          try {
+            const scoreResponse = await getScore.mutateAsync({
+              image: base64Image,
+              text: prompt || "Sample text or description for the image",
+            });
+
+            console.log(scoreResponse);
+
+            // Check if the response has a score, and push it if it does
+            if (scoreResponse && "score" in scoreResponse) {
+              imageScores.push({ userId, score: scoreResponse.score });
+
+              // Determine winner if all scores are processed
+              if (imageScores.length === Object.keys(userShapes).length) {
+                const winner = imageScores.reduce(
+                  (max, entry) => (entry.score > max.score ? entry : max),
+                  { score: 0 },
+                );
+                setWinner(winner.userId);
+                console.log("winner: ", winner);
+              }
+            }
+
+            console.log("image scores", imageScores);
+          } catch (error) {
+            console.error("Failed to get score:", error);
+          }
         };
+
         img.src = url;
         setImages((prev) => [...prev, { userId, image: url }]);
-        // TODO: Send to server
       }
     }
   };
@@ -350,6 +386,7 @@ export default function RoomPage({
             className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70"
           >
             <EnhancedGameOverDialog
+              winner={winner}
               isOpen={isGameOver}
               onClose={() => setIsGameOver(false)}
               onRestart={handleRestart}
@@ -432,6 +469,7 @@ const MetaUiHelper = track(function MetaUiHelper() {
 });
 
 const EnhancedGameOverDialog = ({
+  winner,
   isOpen,
   onClose,
   onRestart,
@@ -440,7 +478,7 @@ const EnhancedGameOverDialog = ({
   player2Drawing,
 }) => {
   const [imagesLoaded, setImagesLoaded] = useState(false);
-  const [winner, setWinner] = useState(null);
+  //   const [winner, setWinner] = useState(null);
 
   useEffect(() => {
     const loadImages = async () => {
@@ -461,10 +499,10 @@ const EnhancedGameOverDialog = ({
 
       setImagesLoaded(true);
 
-      if (img1Loaded && !img2Loaded) setWinner("player1");
-      else if (!img1Loaded && img2Loaded) setWinner("player2");
-      else if (img1Loaded && img2Loaded) setWinner("draw");
-      else setWinner("no-drawings");
+      //   if (img1Loaded && !img2Loaded) setWinner("player1");
+      //   else if (!img1Loaded && img2Loaded) setWinner("player2");
+      //   else if (img1Loaded && img2Loaded) setWinner("draw");
+      //   else setWinner("no-drawings");
     };
 
     loadImages();
