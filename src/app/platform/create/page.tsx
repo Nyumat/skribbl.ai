@@ -1,20 +1,24 @@
 'use client'
 
-import React, { useState } from 'react'
 import { motion } from 'framer-motion'
-import { PlusCircle, Users, Video, Mic, MessageSquare, ArrowLeft } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Mic, PlusCircle, Users, Video } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import React, { useState } from 'react'
 import { SkribblLogo } from '~/components/logo'
+import { Input } from '~/components/ui/input'
+import { Label } from '~/components/ui/label'
 
 export default function CreateRoomPage() {
     const [roomName, setRoomName] = useState('')
     const [enableVideo, setEnableVideo] = useState(true)
     const [enableAudio, setEnableAudio] = useState(true)
     const [enableChat, setEnableChat] = useState(true)
-
+    const router = useRouter();
     const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
         // TODO: Create 100ms SDK Room! :P
+        e.preventDefault()
+        router.push(`/platform/room/${crypto.randomUUID()}/lobby`)
     }
 
     return (
@@ -43,16 +47,16 @@ export default function CreateRoomPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label htmlFor="roomName" className="block text-sm font-medium text-gray-400 mb-1">
+                        <Label htmlFor="roomName" className="block text-sm font-medium text-gray-400 mb-1">
                             Room Name
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                             type="text"
                             id="roomName"
                             value={roomName}
                             onChange={(e) => setRoomName(e.target.value)}
                             placeholder="Enter room name"
-                            className="w-full px-4 py-3 bg-gray-800 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-6 bg-gray-800 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             required
                         />
                     </div>
@@ -95,9 +99,9 @@ export default function CreateRoomPage() {
                     transition={{ delay: 0.5, duration: 0.5 }}
                     className="mt-8 text-center"
                 >
-                    <a href="#" className="text-blue-500 hover:underline">
+                    <Link href="/platform/join" className="text-blue-500 hover:underline">
                         Already have a room code? Join an existing room
-                    </a>
+                    </Link>
                 </motion.div>
             </motion.div>
         </div>
