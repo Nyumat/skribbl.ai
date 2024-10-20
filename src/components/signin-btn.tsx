@@ -45,8 +45,8 @@ export function SignInBtn({ providers }: SignInProps) {
             <Button
                 key={provider.id}
                 className="w-full"
-                onClick={() =>
-                    signIn(provider.id, { callbackUrl: "/platform/choose" })
+                onClick={async () =>
+                    await signIn(provider.id, { callbackUrl: "/platform/choose" })
                 }
                 variant="outline"
             >

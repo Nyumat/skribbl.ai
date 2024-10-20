@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     openGraph: {
         title: "Skribbl.ai - The Gameified Whiteboard for Friends, Teams, and Collaboration",
         description: "skribbl.ai is a gameified whiteboard for friends, teams, and collaboration. Play games, draw, and have fun with your friends!",
-        images: [{ url: "/og.png" }],
+        images: [{ url: "/og2.png" }],
     },
 };
 

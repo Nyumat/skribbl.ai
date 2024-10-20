@@ -94,22 +94,22 @@ export default function RoomPage({
     }
   }, [userId]);
 
-  const fetchPrompt = async () => {
-    if (userId) {
-      try {
-        const res = await utils.judge.getPrompt.fetch();
-        if (res && "message" in res && res.message?.content) {
-          setPrompt(res.message.content);
-        } else {
-          setPrompt(""); // Fallback to empty string if the structure is unexpected
-        }
-      } catch (error) {
-        console.error("Error fetching prompt:", error);
-      }
-    }
-  };
-
   useEffect(() => {
+    const fetchPrompt = async () => {
+      if (userId) {
+        try {
+          const res = await utils.judge.getPrompt.fetch();
+          if (res && "message" in res && res.message?.content) {
+            setPrompt(res.message.content);
+          } else {
+            setPrompt(""); // Fallback to empty string if the structure is unexpected
+          }
+        } catch (error) {
+          console.error("Error fetching prompt:", error);
+        }
+      }
+    };
+
     fetchPrompt();
   }, [userId]);
 
@@ -193,7 +193,6 @@ export default function RoomPage({
     const allShapes = editorRef.current.getCurrentPageShapes();
     const shapeIds = allShapes.map((shape: { id: string }) => shape.id);
     editorRef.current.deleteShapes(shapeIds);
-    fetchPrompt();
     setTimeLimit(TIME_LIMIT);
     setTimesUp(false);
   };

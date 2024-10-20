@@ -40,11 +40,11 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
+    NODE_ENV: process.env.NODE_ENV,
     DATABASE_URL:
       process.env.NODE_ENV == "development"
-        ? process.env.DATABASE_URL
-        : process.env.PROD_DATABASE_URL,
-    NODE_ENV: process.env.NODE_ENV,
+        ? process.env.DEV_DATABASE_URL
+        : process.env.DATABASE_URL,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
     DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
