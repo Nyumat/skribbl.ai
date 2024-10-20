@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import { setUserPreferences, Tldraw } from '@tldraw/tldraw';
+import { setUserPreferences, Tldraw, TLShape, TLShapeId } from '@tldraw/tldraw';
 import '@tldraw/tldraw/tldraw.css';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, MessageSquare, X } from 'lucide-react';
@@ -29,6 +29,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SkribblLogo } from '~/components/logo';
 import { Separator } from '~/components/ui/separator';
+import { cn } from '~/lib/utils';
 
 export default function RoomPage({
     searchParams,
@@ -46,15 +47,76 @@ export default function RoomPage({
     const { data } = useSession();
     const userId = data?.user?.id;
     const store = useSyncDemo({ roomId: roomCode });
+    const [userShapes, setUserShapes] = useState<Record<string, TLShapeId[]>>({});
 
     useEffect(() => {
-        if (userId) {
+        if (userId && editorRef.current) {
+            editorRef.current.getInitialMetaForShape = (shape: TLShape) => {
+                return {
+                    userId: userId,
+                };
+            }
             setUserPreferences({
                 colorScheme: "system",
                 id: userId
             });
+
+            const handleCreate = (shapes: TLShape[]) => {
+                setUserShapes(prevShapes => {
+                    const newShapes = { ...prevShapes };
+                    shapes.forEach(shape => {
+                        const shapeUserId = shape.meta.userId as string;
+                        if (shapeUserId) {
+                            if (!newShapes[shapeUserId]) {
+                                newShapes[shapeUserId] = [];
+                            }
+                            newShapes[shapeUserId].push(shape.id);
+                        }
+                    });
+                    return newShapes;
+                });
+            };
+
+            editorRef.current.on('create', handleCreate);
+
+            const timer = setTimeout(() => {
+                exportShapesForAllUsers();
+            }, 10000);
+
+            return () => {
+                editorRef.current.off('create', handleCreate);
+                clearTimeout(timer);
+            };
         }
     }, [userId]);
+
+    const exportShapesForAllUsers = async () => {
+        if (!editorRef.current) return;
+
+        for (const [userId, shapeIds] of Object.entries(userShapes)) {
+            const svg = await editorRef.current.getSvg(shapeIds);
+            if (svg) {
+                const svgString = new XMLSerializer().serializeToString(svg);
+                const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    const pngUrl = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.href = pngUrl;
+                    link.download = `user_${userId}_shapes.png`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                };
+                img.src = url;
+            }
+        }
+    };
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -102,6 +164,9 @@ export default function RoomPage({
 
     };
 
+    console.log({
+        userShapes
+    })
 
     return (
         <div className="flex h-screen bg-black text-white">
@@ -205,7 +270,7 @@ export default function RoomPage({
                             The game is over. Would you like to restart or go back to the main menu?
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter>
+                    <DialogFooter className={cn("flex gap-2")}>
                         <Button onClick={handleRestart}>Restart</Button>
                         <Button variant="ghost" onClick={() => router.push('/platform/choose')}>Go Back</Button>
                     </DialogFooter>

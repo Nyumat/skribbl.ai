@@ -26,7 +26,7 @@ export default function ChooseFlowPage() {
                 }}>Log Out</Button>
             </header>
 
-            <main className="flex flex-col items-center justify-center px-4 py-12 md:py-24 text-center">
+            <main className="flex flex-col items-center justify-center px-4 py-8 text-center">
                 <motion.h1
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
