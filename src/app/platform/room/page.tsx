@@ -540,7 +540,7 @@ const EnhancedGameOverDialog = ({
               animate={{ opacity: 1 }}
               className="space-y-6"
             >
-              <ResultDisplay winner={winner} />
+              <ResultDisplay winner={"player1"} />
 
               <div className="flex justify-between gap-4">
                 <DrawingDisplay
