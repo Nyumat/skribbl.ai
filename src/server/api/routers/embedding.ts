@@ -76,4 +76,44 @@ export const embeddingRouter = createTRPCRouter({
         throw new Error("Error storing embeddings in the database.");
       }
     }),
+  getEmbeddingById: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const { id } = input;
+
+      // Ensure the collection exists or create it
+      let collection;
+      try {
+        collection = await ctx.chroma.getOrCreateCollection({
+          name: "embeddingsCollection",
+        });
+      } catch (error) {
+        console.error("Failed to get or create Chroma collection:", error);
+        throw new Error("Error ensuring collection exists in Chroma.");
+      }
+
+      // Retrieve embedding from the Chroma collection
+      try {
+        const result = await collection.get({
+          ids: [id],
+        });
+
+        if (result.embeddings.length === 0) {
+          throw new Error(`Embedding with ID ${id} not found.`);
+        }
+
+        return {
+          id: id,
+          embedding: result.embeddings[0],
+          metadata: result.metadatas ? result.metadatas[0] : null,
+        };
+      } catch (error) {
+        console.error("Failed to retrieve embedding from Chroma:", error);
+        throw new Error("Error retrieving embedding from Chroma.");
+      }
+    }),
 });
