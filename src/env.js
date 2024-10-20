@@ -42,7 +42,7 @@ export const env = createEnv({
   runtimeEnv: {
     DATABASE_URL:
       process.env.NODE_ENV == "development"
-        ? process.env.DATABASE_URL
+        ? process.env.DEV_DATABASE_URL
         : process.env.PROD_DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
