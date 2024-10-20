@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { dot, norm } from "mathjs";
-import { getChroma } from "~/server/chroma";
 
 export const embeddingRouter = createTRPCRouter({
   calculateAndStore: protectedProcedure
@@ -14,6 +13,7 @@ export const embeddingRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { embedding1, embedding2 } = input;
 
+      const { getChroma } = await import("~/server/chroma");
       const chroma = await getChroma();
 
       if (embedding1.length !== embedding2.length) {
@@ -87,6 +87,7 @@ export const embeddingRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const { id } = input;
+      const { getChroma } = await import("~/server/chroma");
       const chroma = await getChroma();
 
       // Ensure the collection exists or create it
