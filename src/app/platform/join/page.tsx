@@ -4,17 +4,19 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Users } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { SkribblLogo } from '~/components/logo';
 import { Button } from '~/components/ui/button';
+import { Input } from '~/components/ui/input';
 
 export default function JoinRoomPage() {
     const [roomCode, setRoomCode] = useState('')
-
+    const router = useRouter();
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         console.log('Joining room with code:', roomCode)
-
+        router.push(`/platform/room?code=${roomCode}`)
     }
 
     return (
@@ -43,12 +45,12 @@ export default function JoinRoomPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="relative">
-                        <input
+                        <Input
                             type="text"
                             value={roomCode}
                             onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                            placeholder="Enter room code"
-                            className="w-full px-4 py-3 bg-gray-800 rounded-lg text-2xl text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-600"
+                            placeholder="Enter Room Code"
+                            className="w-full px-4 py-6 bg-gray-800 rounded-lg text-2xl text-center focus:outline-none focus:ring-2 focus:ring-blue-600"
                             maxLength={6}
                         />
                     </div>
