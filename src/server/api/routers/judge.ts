@@ -5,13 +5,13 @@ export const judgeRouter = createTRPCRouter({
   getPrompt: protectedProcedure.query(async () => {
     const openai = new OpenAI();
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-3.5-turbo-0125",
       messages: [
         { role: "system", content: "You are a helpful assistant." },
         {
           role: "user",
           content:
-            "Generate a creative idea for something to draw. It can be a character, animal, or object. Examples of animals include a cat, dog, or tiger. Examples of characters include classic figures like Mickey Mouse, Winnie the Pooh, or the Lorax. You can also suggest objects like a car, table, or chair. Please make the suggestion imaginative and fun, and feel free to combine different elements, like a flying tiger or a robot cat playing a guitar. Please limit your response to just the idea and nothing else",
+            "Generate a three word sentence where the sentence consists of a random object/animal of your choosing. an adjective to describe the object/animal and a verb to describe what it's doing",
         },
       ],
     });
