@@ -2,6 +2,7 @@ import { postRouter } from "~/server/api/routers/post";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { judgeRouter } from "./routers/judge";
 import { embeddingRouter } from "./routers/embedding";
+import { hmsRouter } from "./routers/hms";
 
 /**
  * This is the primary router for your server.
@@ -12,6 +13,7 @@ export const appRouter = createTRPCRouter({
   post: postRouter,
   judge: judgeRouter,
   embedding: embeddingRouter,
+  hms: hmsRouter,
 });
 
 // export type definition of API
