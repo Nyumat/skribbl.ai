@@ -10,6 +10,7 @@ import { judgeRouter } from "./routers/judge";
 export const appRouter = createTRPCRouter({
   post: postRouter,
   judge: judgeRouter,
+  rooms: roomRouter,
 });
 
 // export type definition of API
