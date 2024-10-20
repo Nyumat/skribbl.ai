@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { dot, norm } from "mathjs";
+import { getChroma } from "~/server/chroma";
 
 export const embeddingRouter = createTRPCRouter({
   calculateAndStore: protectedProcedure
@@ -12,6 +13,8 @@ export const embeddingRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { embedding1, embedding2 } = input;
+
+      const chroma = await getChroma();
 
       if (embedding1.length !== embedding2.length) {
         throw new Error("Embeddings must be of the same dimension.");
@@ -33,7 +36,7 @@ export const embeddingRouter = createTRPCRouter({
       // Ensure the collection exists or create it
       let collection;
       try {
-        collection = await ctx.chroma.getOrCreateCollection({
+        collection = await chroma.getOrCreateCollection({
           name: "embeddingsCollection",
           metadata: { description: "Collection for storing user embeddings." },
         });
@@ -84,11 +87,12 @@ export const embeddingRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const { id } = input;
+      const chroma = await getChroma();
 
       // Ensure the collection exists or create it
       let collection;
       try {
-        collection = await ctx.chroma.getOrCreateCollection({
+        collection = await chroma.getOrCreateCollection({
           name: "embeddingsCollection",
         });
       } catch (error) {
