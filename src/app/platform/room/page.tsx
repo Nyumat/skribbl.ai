@@ -201,8 +201,8 @@ export default function RoomPage({
           const pngUrl = canvas.toDataURL("image/png");
           const link = document.createElement("a");
           link.href = pngUrl;
-          link.download = `user_${userId}_shapes.png`;
-          link.click();
+          //   link.download = `user_${userId}_shapes.png`;
+          //   link.click();
           URL.revokeObjectURL(url);
 
           // Convert to base64
@@ -221,14 +221,18 @@ export default function RoomPage({
             if (scoreResponse && "score" in scoreResponse) {
               imageScores.push({ userId, score: scoreResponse.score });
 
-              // Determine winner if all scores are processed
               if (imageScores.length === Object.keys(userShapes).length) {
-                const winner = imageScores.reduce(
-                  (max, entry) => (entry.score > max.score ? entry : max),
-                  { score: 0 },
-                );
-                setWinner(winner.userId);
-                console.log("winner: ", winner);
+                let maxScore = -1;
+                let winnerId = ""; // Temporary variable to hold the winner's userId
+                imageScores.forEach((image) => {
+                  if (image.score > maxScore) {
+                    winnerId = image.userId;
+                    maxScore = image.score;
+                  }
+                });
+
+                setWinner(winnerId); // Set the winner using the determined userId
+                console.log("Winner:", winnerId);
               }
             }
 
