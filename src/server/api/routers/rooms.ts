@@ -21,7 +21,7 @@ export const roomRouter = createTRPCRouter({
 
       const room = await ctx.db.room.create({
         data: {
-          createdBy: { connect: { id: ctx.session.user.id } },
+          createdById: ctx.session.user.id,
           players: { connect: { id: ctx.session.user.id } },
         },
       });
@@ -36,7 +36,6 @@ export const roomRouter = createTRPCRouter({
         where: { id: input.roomId },
         include: {
           players: true,
-          createdBy: true,
         },
       });
 
@@ -87,7 +86,6 @@ export const roomRouter = createTRPCRouter({
       where: { createdById: ctx.session.user.id },
       include: {
         players: true,
-        createdBy: true,
       },
     });
 

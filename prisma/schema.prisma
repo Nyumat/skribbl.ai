@@ -59,13 +59,12 @@ model User {
     accounts      Account[]
     sessions      Session[]
     room          Room?     @relation(fields: [roomId], references: [id])
-    roomId        String?   // This is the foreign key to the Room
+    roomId        String?  
 }
-
 model Room {
-    id            String   @id @default(cuid())
-    createdAt     DateTime @default(now())
-    updatedAt     DateTime @updatedAt
-    createdById   String
-    players       User[]    
+    id          String   @id @default(cuid())
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+    createdById String   @unique 
+    players     User[]
 }
