@@ -1,15 +1,34 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import React, { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { MessageSquare, X } from 'lucide-react'
-import { Tldraw } from '@tldraw/tldraw'
-import '@tldraw/tldraw/tldraw.css'
+import { setUserPreferences, Tldraw } from '@tldraw/tldraw';
+import '@tldraw/tldraw/tldraw.css';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowLeft, MessageSquare, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
 
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle
+} from '@/components/ui/dialog';
+import { Input } from "@/components/ui/input";
+import {
+    ResizableHandle,
+    ResizablePanel,
+    ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useSyncDemo } from '@tldraw/sync';
+import { useSession } from 'next-auth/react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { SkribblLogo } from '~/components/logo';
+import { Separator } from '~/components/ui/separator';
 
 export default function RoomPage({
     searchParams,
@@ -18,12 +37,50 @@ export default function RoomPage({
     searchParams: { [key: string]: string | string[] | undefined }
 }) {
     const [isChatOpen, setIsChatOpen] = useState(false)
+    const [isOpen, setIsOpen] = useState(true);
+    const [timesUp, setTimesUp] = useState(false);
+    const [timeLimit, setTimeLimit] = useState(10);
+    const router = useRouter();
+    const roomCode = searchParams.code as string
+    const editorRef = useRef(null);
+    const { data } = useSession();
+    const userId = data?.user?.id;
+    const store = useSyncDemo({ roomId: roomCode });
+
+    useEffect(() => {
+        if (userId) {
+            setUserPreferences({
+                colorScheme: "system",
+                id: userId
+            });
+        }
+    }, [userId]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (timeLimit > 0) {
+                setTimeLimit((prev) => prev - 1)
+            } else {
+                setTimesUp(true)
+                if (timesUp) {
+                    editorRef.current.updateInstanceState({ isReadonly: true, isToolLocked: true });
+                }
+                clearInterval(interval)
+            }
+        }, 1000)
+
+        return () => clearInterval(interval)
+    }, [timeLimit, timesUp])
+
+    const togglePanel = () => {
+        setIsOpen(!isOpen);
+    };
+
     const [messages, setMessages] = useState([
         { id: 1, user: 'Alice', text: 'Hello everyone!' },
         { id: 2, user: 'Bob', text: 'Hi Alice, ready to play?' },
     ])
     const [newMessage, setNewMessage] = useState('')
-    const roomCode = searchParams.code as string
 
     const toggleChat = () => setIsChatOpen(!isChatOpen)
 
@@ -35,25 +92,68 @@ export default function RoomPage({
         }
     }
 
+    const handleRestart = () => {
+        editorRef.current.updateInstanceState({ isReadonly: false, isToolLocked: false });
+        const allShapes = editorRef.current.getCurrentPageShapes();
+        const shapeIds = allShapes.map((shape: { id: string; }) => shape.id);
+        editorRef.current.deleteShapes(shapeIds);
+        setTimeLimit(10);
+        setTimesUp(false);
+
+    };
+
+
     return (
         <div className="flex h-screen bg-black text-white">
-            <div className="flex-1 flex flex-col">
-                <div className="grid grid-cols-2 gap-4 p-4">
-                    <VideoFeed name="Alice" />
-                    <VideoFeed name="Bob" />
-                </div>
-                <div className="flex-1 bg-gray-900 border border-gray-800">
-                    <Tldraw />
-                </div>
-            </div>
-
-            <AnimatePresence>
+            <ResizablePanelGroup direction="horizontal" className="flex-1">
+                <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+                    <div className="flex flex-col h-full bg-gray-900 border-r border-gray-800">
+                        <div className="p-4 flex items-center justify-between">
+                            <SkribblLogo />
+                            <div className="flex items-center space-x-2">
+                                <Link href="/platform/choose">
+                                    <ArrowLeft
+                                        className="cursor-pointer text-blue-600"
+                                        size={20}
+                                    />
+                                    <span className="text-sm">Leave</span>
+                                </Link>
+                            </div>
+                        </div>
+                        <Separator />
+                        <div className="px-4 flex-1 min-h-full overflow-scroll pb-24">
+                            {['Alice', 'Bob', 'Charlie'].map((name) => (
+                                <div className='my-4' key={name}>
+                                    <VideoFeed key={name} name={name} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={70} minSize={30} maxSize={90}>
+                    <Tldraw
+                        className='min-h-screen'
+                        store={store}
+                        onMount={(editor) => {
+                            editorRef.current = editor;
+                        }} />
+                </ResizablePanel>
+            </ResizablePanelGroup>
+            <AnimatePresence mode="popLayout">
                 {isChatOpen && (
                     <motion.div
-                        initial={{ x: '100%' }}
-                        animate={{ x: 0 }}
-                        exit={{ x: '100%' }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                        initial={{ x: '100%', opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: '100%', opacity: 0 }}
+                        transition={{
+                            type: 'spring',
+                            stiffness: 200,
+                            damping: 25,
+                            mass: 1,
+                            velocity: 2,
+                            ease: [0.42, 0, 0.58, 1]
+                        }}
                         className="w-80 bg-gray-900 border-l border-gray-800 flex flex-col"
                     >
                         <div className="flex justify-between items-center p-4 border-b border-gray-800">
@@ -90,25 +190,66 @@ export default function RoomPage({
                 <Button
                     variant="outline"
                     size="icon"
-                    className="fixed bottom-4 right-4"
+                    className="fixed bottom-4 left-4 z-50"
                     onClick={toggleChat}
                 >
                     <MessageSquare className="h-4 w-4" />
                 </Button>
             )}
+
+            <Dialog open={timesUp}>
+                <DialogContent hideCloseButton>
+                    <DialogHeader>
+                        <DialogTitle>Game Over</DialogTitle>
+                        <DialogDescription>
+                            The game is over. Would you like to restart or go back to the main menu?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button onClick={handleRestart}>Restart</Button>
+                        <Button variant="ghost" onClick={() => router.push('/platform/choose')}>Go Back</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
 
 function VideoFeed({ name }: { name: string }) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+        const startVideo = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            } catch (err) {
+                console.error('Error accessing camera: ', err);
+            }
+        };
+
+        startVideo();
+
+        return () => {
+            if (videoRef.current && videoRef.current.srcObject) {
+                const stream = videoRef.current.srcObject as MediaStream;
+                stream.getTracks().forEach(track => track.stop());
+                videoRef.current.srcObject = null;
+                videoRef.current = null;
+            }
+        };
+    }, []);
+
     return (
         <div className="bg-gray-800 rounded-lg overflow-hidden">
             <div className="aspect-video bg-gray-700 flex items-center justify-center">
-                <span className="text-2xl">{name}'s Video</span>
+                <video ref={videoRef} autoPlay className="w-full h-full object-cover" />
             </div>
             <div className="p-2">
                 <h3 className="text-lg font-semibold">{name}</h3>
             </div>
         </div>
-    )
+    );
 }
