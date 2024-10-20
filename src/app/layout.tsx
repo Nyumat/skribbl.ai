@@ -4,6 +4,7 @@ import { TRPCReactProvider } from "~/trpc/react";
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 import { ThemeProvider } from "~/components/theme-provider";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
     metadataBase: new URL("https://drawing-is-for-kids-they-say.vercel.app/"),
@@ -30,6 +31,7 @@ export default function RootLayout({
                     disableTransitionOnChange
                 >
                     <TRPCReactProvider>{children}</TRPCReactProvider>
+                    <Toaster />
                 </ThemeProvider>
             </body>
         </html>
