@@ -1,10 +1,11 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import { setUserPreferences, Tldraw, TLShape, TLShapeId } from '@tldraw/tldraw';
+import { setUserPreferences, Tldraw, TLShape, TLShapeId, track, useEditor } from '@tldraw/tldraw';
 import '@tldraw/tldraw/tldraw.css';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, MessageSquare, X } from 'lucide-react';
+import { ArrowLeft, Loader2, MessageSquare, X } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,13 @@ import { SkribblLogo } from '~/components/logo';
 import { Separator } from '~/components/ui/separator';
 import { cn } from '~/lib/utils';
 
+export type ShapeWithMyMeta = TLShape & { meta: { userId: string, updatedBy: string, updatedAt: number } };
+
+type GameImages = {
+    userId: string;
+    image: string;
+};
+
 export default function RoomPage({
     searchParams,
 }: {
@@ -41,6 +49,8 @@ export default function RoomPage({
     const [isOpen, setIsOpen] = useState(true);
     const [timesUp, setTimesUp] = useState(false);
     const [timeLimit, setTimeLimit] = useState(10);
+    const [isGameOver, setIsGameOver] = useState(false);
+    const [winner, setWinner] = useState(null);
     const router = useRouter();
     const roomCode = searchParams.code as string
     const editorRef = useRef(null);
@@ -48,6 +58,7 @@ export default function RoomPage({
     const userId = data?.user?.id;
     const store = useSyncDemo({ roomId: roomCode });
     const [userShapes, setUserShapes] = useState<Record<string, TLShapeId[]>>({});
+    const [images, setImages] = useState<GameImages[]>([]);
 
     useEffect(() => {
         if (userId && editorRef.current) {
@@ -60,63 +71,19 @@ export default function RoomPage({
                 colorScheme: "system",
                 id: userId
             });
-
-            const handleCreate = (shapes: TLShape[]) => {
-                setUserShapes(prevShapes => {
-                    const newShapes = { ...prevShapes };
-                    shapes.forEach(shape => {
-                        const shapeUserId = shape.meta.userId as string;
-                        if (shapeUserId) {
-                            if (!newShapes[shapeUserId]) {
-                                newShapes[shapeUserId] = [];
-                            }
-                            newShapes[shapeUserId].push(shape.id);
-                        }
-                    });
-                    return newShapes;
-                });
-            };
-
-            editorRef.current.on('create', handleCreate);
-
-            const timer = setTimeout(() => {
-                exportShapesForAllUsers();
-            }, 10000);
-
-            return () => {
-                editorRef.current.off('create', handleCreate);
-                clearTimeout(timer);
-            };
         }
     }, [userId]);
 
-    const exportShapesForAllUsers = async () => {
-        if (!editorRef.current) return;
-
-        for (const [userId, shapeIds] of Object.entries(userShapes)) {
-            const svg = await editorRef.current.getSvg(shapeIds);
-            if (svg) {
-                const svgString = new XMLSerializer().serializeToString(svg);
-                const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-                const url = URL.createObjectURL(blob);
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0);
-                    const pngUrl = canvas.toDataURL('image/png');
-                    const link = document.createElement('a');
-                    link.href = pngUrl;
-                    link.download = `user_${userId}_shapes.png`;
-                    link.click();
-                    URL.revokeObjectURL(url);
-                };
-                img.src = url;
-            }
+    useEffect(() => {
+        if (editorRef.current) {
+            editorRef.current.sideEffects.registerAfterCreateHandler('shape', (shape) => {
+                setUserShapes((prev) => ({
+                    ...prev,
+                    [shape.meta.userId]: [...(prev[shape.meta.userId] || []), shape.id],
+                }));
+            });
         }
-    };
+    }, [editorRef.current]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -124,8 +91,10 @@ export default function RoomPage({
                 setTimeLimit((prev) => prev - 1)
             } else {
                 setTimesUp(true)
+                setIsGameOver(true)
                 if (timesUp) {
                     editorRef.current.updateInstanceState({ isReadonly: true, isToolLocked: true });
+                    exportShapesForAllUsers();
                 }
                 clearInterval(interval)
             }
@@ -161,12 +130,44 @@ export default function RoomPage({
         editorRef.current.deleteShapes(shapeIds);
         setTimeLimit(10);
         setTimesUp(false);
-
+        setIsGameOver(false);
+        setWinner(null);
     };
 
-    console.log({
-        userShapes
-    })
+    const exportShapesForAllUsers = async () => {
+        for (const [userId, shapeIds] of Object.entries(userShapes)) {
+            const svg = await editorRef.current.getSvg(shapeIds);
+            if (svg) {
+                const svgString = new XMLSerializer().serializeToString(svg);
+                const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    const pngUrl = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.href = pngUrl;
+                    link.download = `user_${userId}_shapes.png`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                };
+                img.src = url;
+                setImages((prev) => [...prev, { userId, image: url }]);
+                // TODO: Send to server
+            }
+        }
+    };
+
+    const handleGoBack = () => {
+        const allShapes = editorRef.current.getCurrentPageShapes();
+        const shapeIds = allShapes.map((shape: { id: string; }) => shape.id);
+        editorRef.current.deleteShapes(shapeIds);
+        router.push('/platform/choose');
+    }
 
     return (
         <div className="flex h-screen bg-black text-white">
@@ -202,7 +203,28 @@ export default function RoomPage({
                         store={store}
                         onMount={(editor) => {
                             editorRef.current = editor;
-                        }} />
+                            editorRef.current.getInitialMetaForShape = (_shape) => {
+                                return {
+                                    updatedBy: userId,
+                                    updatedAt: Date.now(),
+                                    userId: userId
+                                }
+                            }
+
+                            editor.sideEffects.registerBeforeChangeHandler('shape', (_prev, next, source) => {
+                                if (source !== 'user') return next
+                                return {
+                                    ...next,
+                                    meta: {
+                                        updatedBy: userId,
+                                        updatedAt: Date.now(),
+                                        userId: userId
+                                    },
+                                }
+                            })
+                        }} >
+                        <MetaUiHelper />
+                    </Tldraw>
                 </ResizablePanel>
             </ResizablePanelGroup>
             <AnimatePresence mode="popLayout">
@@ -262,20 +284,25 @@ export default function RoomPage({
                 </Button>
             )}
 
-            <Dialog open={timesUp}>
-                <DialogContent hideCloseButton>
-                    <DialogHeader>
-                        <DialogTitle>Game Over</DialogTitle>
-                        <DialogDescription>
-                            The game is over. Would you like to restart or go back to the main menu?
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className={cn("flex gap-2")}>
-                        <Button onClick={handleRestart}>Restart</Button>
-                        <Button variant="ghost" onClick={() => router.push('/platform/choose')}>Go Back</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <AnimatePresence>
+                {isGameOver && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50"
+                    >
+                        <EnhancedGameOverDialog
+                            isOpen={isGameOver}
+                            onClose={() => setIsGameOver(false)}
+                            onRestart={handleRestart}
+                            onGoBack={handleGoBack}
+                            player1Drawing={images.find((img) => img.userId === userId)?.image}
+                            player2Drawing={images.find((img) => img.userId !== userId)?.image}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     )
 }
@@ -318,3 +345,175 @@ function VideoFeed({ name }: { name: string }) {
         </div>
     );
 }
+
+const MetaUiHelper = track(function MetaUiHelper() {
+    const editor = useEditor()
+    const onlySelectedShape = editor.getOnlySelectedShape() as ShapeWithMyMeta | null
+
+    return (
+        <pre style={{ position: 'absolute', zIndex: 300, top: 64, left: 12, margin: 0 }}>
+            {onlySelectedShape
+                ? JSON.stringify(onlySelectedShape.meta, null, '\t')
+                : 'Select one shape to see its meta data.'}
+        </pre>
+    )
+})
+
+const EnhancedGameOverDialog = ({
+    isOpen,
+    onClose,
+    onRestart,
+    onGoBack,
+    player1Drawing,
+    player2Drawing
+}) => {
+    const [imagesLoaded, setImagesLoaded] = useState(false);
+    const [winner, setWinner] = useState(null);
+
+    useEffect(() => {
+        const loadImages = async () => {
+            const loadImage = (src) => {
+                return new Promise((resolve) => {
+                    if (!src) resolve(false);
+                    const img = new Image();
+                    img.onload = () => resolve(true);
+                    img.onerror = () => resolve(false);
+                    img.src = src;
+                });
+            };
+
+            const [img1Loaded, img2Loaded] = await Promise.all([
+                loadImage(player1Drawing),
+                loadImage(player2Drawing)
+            ]);
+
+            setImagesLoaded(true);
+
+            if (img1Loaded && !img2Loaded) setWinner('player1');
+            else if (!img1Loaded && img2Loaded) setWinner('player2');
+            else if (img1Loaded && img2Loaded) setWinner('draw');
+            else setWinner('no-drawings');
+        };
+
+        loadImages();
+    }, [player1Drawing, player2Drawing]);
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-[800px] bg-gray-900 text-white">
+                <DialogHeader>
+                    <DialogTitle className="text-2xl font-bold">Game Over</DialogTitle>
+                    <DialogDescription className="text-gray-300">
+                        {winner === 'no-drawings' ? 'No drawings were submitted.' : 'View the final drawings and see the result!'}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <AnimatePresence mode="wait">
+                    {!imagesLoaded && (
+                        <motion.div
+                            key="loader"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="flex justify-center items-center h-64"
+                        >
+                            <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
+                        </motion.div>
+                    )}
+
+                    {imagesLoaded && (
+                        <motion.div
+                            key="content"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="space-y-6"
+                        >
+                            <ResultDisplay winner={winner} />
+
+                            <div className="flex justify-between gap-4">
+                                <DrawingDisplay
+                                    src={player1Drawing}
+                                    alt="Player 1 Drawing"
+                                    isWinner={winner === 'player1'}
+                                    playerNumber={1}
+                                />
+                                <DrawingDisplay
+                                    src={player2Drawing}
+                                    alt="Player 2 Drawing"
+                                    isWinner={winner === 'player2'}
+                                    playerNumber={2}
+                                />
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <DialogFooter className={cn("flex gap-2 mt-6")}>
+                    <Button onClick={onRestart} className="bg-blue-600 hover:bg-blue-700">Restart</Button>
+                    <Button variant="outline" onClick={onGoBack} className="bg-gray-700 hover:bg-gray-600">Go Back</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+const ResultDisplay = ({ winner }) => {
+    let message = '';
+    let bgColor = '';
+
+    switch (winner) {
+        case 'player1':
+            message = 'Player 1 wins!';
+            bgColor = 'bg-green-600';
+            break;
+        case 'player2':
+            message = 'Player 2 wins!';
+            bgColor = 'bg-green-600';
+            break;
+        case 'draw':
+            message = "It's a draw!";
+            bgColor = 'bg-yellow-600';
+            break;
+        case 'no-drawings':
+            message = 'No drawings submitted';
+            bgColor = 'bg-red-600';
+            break;
+    }
+
+    return (
+        <motion.div
+            className={`${bgColor} p-4 rounded-lg`}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+        >
+            <p className="text-lg font-semibold text-center">{message}</p>
+        </motion.div>
+    );
+};
+
+const DrawingDisplay = ({ src, alt, isWinner, playerNumber }) => (
+    <motion.div
+        className="relative w-full"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+    >
+        {src ? (
+            <img src={src} alt={alt} className="w-1/2 h-auto rounded-lg border-2 border-gray-700" />
+        ) : (
+            <div className="w-full h-64 flex items-center justify-center bg-gray-800 rounded-lg border-2 border-gray-700">
+                <p className="text-gray-400">No drawing from Player {playerNumber}</p>
+            </div>
+        )}
+        {isWinner && (
+            <motion.div
+                className="absolute inset-0 flex items-center justify-center bg-green-500 bg-opacity-70 rounded-lg"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5, duration: 0.3 }}
+            >
+                <span className="text-white text-3xl font-bold drop-shadow-lg">Winner!</span>
+            </motion.div>
+        )}
+    </motion.div>
+);
