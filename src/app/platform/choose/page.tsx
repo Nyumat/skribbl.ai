@@ -45,7 +45,7 @@ export default function ChooseFlowPage() {
                     Select how you'd like to start your skribbl.ai experience!
                 </motion.p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-20 w-full max-w-3xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-20 w-full max-w-lg lg:max-w-3xl">
                     <OptionCard
                         icon={<Users className="w-12 h-12 mb-4" />}
                         title="Join a Room"
